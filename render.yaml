@@ -3,7 +3,7 @@ services:
     name: antimony-ai
     runtime: python
     plan: free
-    buildCommand: python -m py_compile antimony_core.py hosted_server.py
+    buildCommand: pip install -r requirements.txt && python -m py_compile antimony_core.py hosted_server.py
     startCommand: python hosted_server.py
     healthCheckPath: /health
     envVars:

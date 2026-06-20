@@ -1,5 +1,5 @@
 (function () {
-  const API = window.location.protocol === "file:" ? "http://127.0.0.1:8765" : window.location.origin;
+  const API = window.ANTIMONY_API || (window.location.protocol === "file:" ? "http://127.0.0.1:8765" : window.location.origin);
   window.ANTIMONY_API = API;
 
   const state = {
