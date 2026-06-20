@@ -1541,6 +1541,7 @@ class LocalLLM:
     def __init__(self):
         self.model = os.getenv("LOCAL_LLM_MODEL", APP_CONFIG.get("ollama_model", "llama3.2:latest"))
         self.url = os.getenv("OLLAMA_URL", "http://127.0.0.1:11434/api/chat")
+        self.api_key = os.getenv("OLLAMA_API_KEY", "").strip()
         self.timeout = int(os.getenv("OLLAMA_TIMEOUT", APP_CONFIG.get("ollama_timeout", 180)))
         self.max_tokens = int(APP_CONFIG.get("ollama_max_tokens", 700))
         env_enabled = os.getenv("USE_OLLAMA")
@@ -1559,10 +1560,13 @@ class LocalLLM:
                 "temperature": 0.6,
             },
         }
+        headers = {"Content-Type": "application/json"}
+        if self.api_key:
+            headers["Authorization"] = f"Bearer {self.api_key}"
         req = request.Request(
             self.url,
             data=json.dumps(payload).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
+            headers=headers,
             method="POST",
         )
         with request.urlopen(req, timeout=self.timeout) as response:
