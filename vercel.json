@@ -12,6 +12,8 @@
     }
   ],
   "rewrites": [
-    { "source": "/assistant_web.html", "destination": "/index.html" }
+    { "source": "/assistant_web.html", "destination": "/index.html" },
+    { "source": "/otakus_cloud", "destination": "/otakus_cloud.html" },
+    { "source": "/writing_zone", "destination": "/writing_zone.html" }
   ]
 }

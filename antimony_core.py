@@ -3011,7 +3011,9 @@ h1{{margin:0 0 4px;font-size:30px}}p{{color:#aebbd7;margin:0 0 22px}}.online{{co
 </main></body></html>""")
                 elif path == "/health":
                     llm_mode = "openai" if assistant.openai.enabled else ("ollama" if assistant.llm.enabled else "built-in")
-                    llm_error = assistant.last_llm_error
+                    # A disabled optional provider is expected when the built-in
+                    # fallback is selected; it must not make health look broken.
+                    llm_error = assistant.last_llm_error if llm_mode != "built-in" else None
                     if llm_error and "insufficient_quota" in llm_error:
                         llm_status = "quota_exceeded"
                     elif llm_error:

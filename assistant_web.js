@@ -323,7 +323,14 @@ async function loadSessions() {
         btn.className = "session";
         btn.textContent = `Cloud: ${session.title || "Saved chat"}`;
         btn.onclick = () => loadCloudSession(session.id);
+        const del = document.createElement("button");
+        del.className = "delete-session";
+        del.type = "button";
+        del.textContent = "x";
+        del.title = "Delete cloud chat";
+        del.onclick = () => deleteCloudSession(session.id);
         row.appendChild(btn);
+        row.appendChild(del);
         sessions.appendChild(row);
       });
     }
@@ -729,6 +736,16 @@ async function deleteSession(id) {
   }
   await loadSessions();
   addMessage("System", data?.ok ? "Saved chat deleted." : "Saved chat was already gone.");
+}
+
+async function deleteCloudSession(id) {
+  try {
+    await window.AntimonyCloud.deleteChat(id);
+    await loadSessions();
+    addMessage("System", "Cloud chat deleted.");
+  } catch (error) {
+    addMessage("System", `Could not delete that cloud chat. ${error.message}`);
+  }
 }
 
 async function loadTools() {

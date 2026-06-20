@@ -1,0 +1,169 @@
+:root {
+  color-scheme: dark;
+  --bg0: #050814;
+  --bg1: #10194a;
+  --accent: #8d5cff;
+  --accent2: #73fff0;
+  --text: #f4edff;
+  --muted: #b9bdd6;
+}
+* { box-sizing: border-box; }
+body {
+  min-height: 100vh;
+  margin: 0;
+  color: var(--text);
+  font: 14px/1.4 "Segoe UI", system-ui, sans-serif;
+  background:
+    radial-gradient(circle at 20% 12%, color-mix(in srgb, var(--accent) 34%, transparent), transparent 28%),
+    radial-gradient(circle at 82% 18%, color-mix(in srgb, var(--accent2) 22%, transparent), transparent 24%),
+    linear-gradient(135deg, var(--bg0), var(--bg1) 54%, #03050d);
+}
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(255,255,255,.045) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(255,255,255,.035) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(circle at 50% 20%, #000, transparent 78%);
+}
+body.writing {
+  --bg1: #301044;
+  --accent: #ff7ab6;
+  --accent2: #ffd36e;
+}
+.page {
+  width: min(1180px, calc(100% - 36px));
+  margin: 0 auto;
+  padding: 28px 0 36px;
+}
+.mode-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-areas:
+    "top"
+    "tools"
+    "chat";
+  gap: 14px;
+}
+.top {
+  grid-area: top;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 22px;
+  padding: 16px 18px;
+}
+h1 { margin: 0; font-size: 42px; }
+p { margin: 6px 0 0; color: var(--muted); }
+.glass {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.11), rgba(255,255,255,.04)),
+    rgba(10, 14, 34, .55);
+  border: 1px solid color-mix(in srgb, var(--accent2) 34%, transparent);
+  box-shadow: 0 0 34px rgba(0,0,0,.26), inset 0 0 22px rgba(255,255,255,.04);
+  border-radius: 14px;
+  backdrop-filter: blur(18px);
+}
+.back {
+  color: var(--text);
+  text-decoration: none;
+  padding: 10px 14px;
+  font-weight: 800;
+}
+.grid {
+  grid-area: tools;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 12px;
+}
+.tool-grid { align-content: start; }
+.tool {
+  min-height: 112px;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  padding: 14px;
+  color: var(--text);
+  text-decoration: none;
+  transition: .18s ease;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+.tool:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent2);
+  box-shadow: 0 0 24px color-mix(in srgb, var(--accent) 44%, transparent);
+}
+.tool b { font-size: 16px; }
+.tool span { color: var(--muted); font-size: 12px; }
+.mode-chat {
+  grid-area: chat;
+  min-height: 260px;
+  display: grid;
+  grid-template-rows: 1fr auto;
+  overflow: hidden;
+}
+.mode-chat-log {
+  max-height: 360px;
+  overflow: auto;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.mode-msg {
+  max-width: 86%;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--accent2) 26%, transparent);
+  border-radius: 10px;
+  background: rgba(8, 12, 31, .62);
+  white-space: pre-wrap;
+}
+.mode-msg.user {
+  align-self: flex-end;
+  border-color: color-mix(in srgb, var(--accent) 46%, transparent);
+}
+.mode-msg strong {
+  display: block;
+  color: var(--accent2);
+  margin-bottom: 4px;
+}
+.mode-composer {
+  display: grid;
+  grid-template-columns: 1fr 80px;
+  gap: 10px;
+  padding: 12px;
+  border-top: 1px solid rgba(255,255,255,.08);
+}
+.mode-composer input {
+  min-width: 0;
+  color: var(--text);
+  background: rgba(8, 12, 31, .78);
+  border: 1px solid color-mix(in srgb, var(--accent2) 26%, transparent);
+  border-radius: 8px;
+  padding: 12px;
+}
+.mode-composer button {
+  color: var(--text);
+  border: 1px solid color-mix(in srgb, var(--accent2) 36%, transparent);
+  border-radius: 8px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 68%, transparent), rgba(255,255,255,.08));
+  font-weight: 800;
+}
+.mode-msg a { color: var(--accent2); }
+
+@media (max-width: 900px) {
+  .mode-layout {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "top"
+      "tools"
+      "chat";
+  }
+  .top { flex-direction: column; align-items: flex-start; }
+}

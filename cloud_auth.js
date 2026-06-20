@@ -122,6 +122,16 @@
     return response.json();
   }
 
+  async function cloudDelete(table, query) {
+    if (!state.enabled || !state.session?.access_token) return false;
+    const response = await fetch(`${state.url}/rest/v1/${table}?${query}`, {
+      method: "DELETE",
+      headers: { ...authHeaders(), Prefer: "return=minimal" },
+    });
+    if (!response.ok) throw new Error(`Cloud delete failed for ${table}`);
+    return true;
+  }
+
   async function syncMessage(role, content, persona) {
     if (!state.session?.user) return;
     return cloudInsert("antimony_messages", {
@@ -157,6 +167,12 @@
     return cloudSelect("antimony_messages", `select=persona,role,content,created_at&session_id=eq.${encodeURIComponent(sessionId)}&order=created_at.asc`);
   }
 
+  async function deleteChat(sessionId) {
+    if (!state.session?.user) return false;
+    const query = `session_id=eq.${encodeURIComponent(sessionId)}&user_id=eq.${encodeURIComponent(state.session.user.id)}`;
+    return cloudDelete("antimony_messages", query);
+  }
+
   function newChat() {
     state.cloudSessionId = crypto.randomUUID ? crypto.randomUUID() : `session-${Date.now()}`;
   }
@@ -166,5 +182,5 @@
     renderAccount();
   }
 
-  window.AntimonyCloud = { state, init, authenticate, syncMessage, syncAgent, listChats, loadChat, newChat, signOut, renderAccount };
+  window.AntimonyCloud = { state, init, authenticate, syncMessage, syncAgent, listChats, loadChat, deleteChat, newChat, signOut, renderAccount };
 })();

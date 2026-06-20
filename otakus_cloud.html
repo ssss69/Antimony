@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Otaku's Cloud - Antimony</title>
+  <link rel="stylesheet" href="mode_pages.css?v=20260614-clean-stage" />
+</head>
+<body data-page="otaku">
+  <main class="page mode-layout">
+    <header class="top glass">
+      <div>
+        <h1>Otaku's Cloud</h1>
+        <p>Anime tools that stay inside this cloud workspace.</p>
+      </div>
+      <a class="back glass" href="assistant_web.html">Back to Antimony</a>
+    </header>
+
+    <section class="grid tool-grid">
+      <button class="tool glass" data-prompt="anime recommender: suggest anime by mood genre and pacing"><b>Anime Recommender</b><span>Suggests anime by mood, genre, pacing.</span></button>
+      <button class="tool glass" data-prompt="watchlist tracker: track watched and plan-to-watch episodes"><b>Watchlist Tracker</b><span>Tracks watched and plan-to-watch episodes.</span></button>
+      <button class="tool glass" data-prompt="character power system builder: make abilities weaknesses and rankings"><b>Power System Builder</b><span>Abilities, weaknesses, rankings.</span></button>
+      <button class="tool glass" data-prompt="anime oc creator: create an original character"><b>Anime OC Creator</b><span>Creates original characters.</span></button>
+      <button class="tool glass" data-prompt="opening ending vibe generator: make anime opening and ending concepts"><b>OP/ED Vibe Generator</b><span>Opening and ending concepts.</span></button>
+      <button class="tool glass" data-prompt="episode recap tool: summarize without spoilers"><b>Episode Recap Tool</b><span>Summaries without spoilers.</span></button>
+      <button class="tool glass" data-prompt="spoiler shield: block spoilers past my episode"><b>Spoiler Shield</b><span>Blocks spoilers past your episode.</span></button>
+      <button class="tool glass" data-prompt="manga panel script maker: convert a scene into panels"><b>Manga Panel Script Maker</b><span>Scene to panel-by-panel script.</span></button>
+      <button class="tool glass" data-prompt="anime quote generator: make original dramatic lines"><b>Anime Quote Generator</b><span>Original dramatic lines.</span></button>
+      <button class="tool glass" data-prompt="tournament bracket tool: which character wins logic battle"><b>Tournament Bracket Tool</b><span>Logic battles and matchup reasoning.</span></button>
+    </section>
+
+    <section class="mode-chat glass">
+      <div class="mode-chat-log" id="modeMessages"></div>
+      <form id="modeForm" class="mode-composer">
+        <input id="modeInput" autocomplete="off" placeholder="Ask Otaku's Cloud..." />
+        <button type="submit">Send</button>
+      </form>
+    </section>
+  </main>
+  <script src="mode_pages.js?v=20260614-clean-stage"></script>
+</body>
+</html>
