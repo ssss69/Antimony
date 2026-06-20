@@ -1,0 +1,18 @@
+{
+  "default_persona": "soren",
+  "use_openai": false,
+  "use_ollama": true,
+  "safe_mode": true,
+  "require_permission_for_risky_tools": true,
+  "model": "gpt-4o-mini",
+  "ollama_model": "llama3.2:latest",
+  "ollama_timeout": 180,
+  "ollama_max_tokens": 700,
+  "auto_ingest_files": true,
+  "auto_save_chats": true,
+  "auto_summarize_memories": true,
+  "auto_search_before_answering": true,
+  "auto_learn_corrections": true,
+  "memory_summary_interval": 8,
+  "public_search_limit": 2
+}
