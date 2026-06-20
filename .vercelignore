@@ -1,0 +1,12 @@
+.git
+.agents
+.codex
+.env
+.env.*
+!.env.example
+__pycache__
+*.pyc
+*.db
+*.sqlite
+*.sqlite3
+knowledge
