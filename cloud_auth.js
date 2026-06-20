@@ -23,6 +23,22 @@
     renderAccount();
   }
 
+  function displayName(user = state.session?.user) {
+    if (!user) return "Cloud Account";
+    const metadata = user.user_metadata || {};
+    const username = metadata.username || metadata.user_name || metadata.full_name || metadata.name;
+    if (username) return String(username).trim().slice(0, 40);
+    if (user.phone) return `User ${String(user.phone).slice(-4)}`;
+    if (user.email) return String(user.email).split("@")[0];
+    return "Cloud Account";
+  }
+
+  async function readJson(response) {
+    const text = await response.text();
+    try { return text ? JSON.parse(text) : {}; }
+    catch { throw new Error(`Authentication service returned ${response.status || "an invalid response"}`); }
+  }
+
   function renderAccount() {
     const button = document.querySelector("#accountButton");
     const overlay = document.querySelector("#authOverlay");
@@ -30,6 +46,9 @@
     const form = document.querySelector("#authForm");
     const panel = document.querySelector("#accountPanel");
     const accountEmail = document.querySelector("#accountEmail");
+    const divider = document.querySelector(".auth-divider");
+    const providers = document.querySelector(".auth-providers");
+    const phoneAuth = document.querySelector("#phoneAuth");
     const close = document.querySelector("#authClose");
     if (!button) return;
     if (!state.enabled) {
@@ -39,16 +58,21 @@
     }
     button.hidden = false;
     if (state.session?.user) {
-      label.textContent = state.session.user.email || "Cloud Account";
+      label.textContent = displayName();
       overlay.hidden = true;
       form.hidden = true;
+      if (divider) divider.hidden = true;
+      if (providers) providers.hidden = true;
+      if (phoneAuth) phoneAuth.hidden = true;
       panel.hidden = false;
-      accountEmail.textContent = state.session.user.email || "Cloud account connected";
+      accountEmail.textContent = `Signed in as ${displayName()}`;
       close.hidden = false;
     } else {
       label.textContent = "Sign in";
       overlay.hidden = false;
       form.hidden = false;
+      if (divider) divider.hidden = false;
+      if (providers) providers.hidden = false;
       panel.hidden = true;
       close.hidden = true;
     }
@@ -86,21 +110,63 @@
         state.enabled = false;
       }
     }
-    try { state.session = JSON.parse(localStorage.getItem("antimony_cloud_session") || "null"); } catch { state.session = null; }
+    const callback = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+    if (callback.get("access_token")) {
+      state.session = {
+        access_token: callback.get("access_token"),
+        refresh_token: callback.get("refresh_token"),
+        token_type: callback.get("token_type") || "bearer",
+        expires_in: Number(callback.get("expires_in") || 0),
+      };
+      window.history.replaceState({}, "", `${window.location.pathname}${window.location.search}`);
+    } else {
+      try { state.session = JSON.parse(localStorage.getItem("antimony_cloud_session") || "null"); } catch { state.session = null; }
+    }
     if (state.enabled && state.session) await validateSession();
     renderAccount();
     return state;
   }
 
-  async function authenticate(email, password, mode) {
+  async function authenticate(email, password, mode, username = "") {
     const endpoint = mode === "signup" ? "signup" : "token?grant_type=password";
     const response = await fetch(`${state.url}/auth/v1/${endpoint}`, {
       method: "POST",
       headers: authHeaders(null),
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password, ...(mode === "signup" && username.trim() ? { data: { username: username.trim() } } : {}) }),
     });
-    const data = await response.json();
+    const data = await readJson(response);
     if (!response.ok) throw new Error(data.msg || data.error_description || data.message || "Authentication failed");
+    if (data.access_token) saveSession(data);
+    return data;
+  }
+
+  function signInWithGoogle() {
+    if (!state.enabled) throw new Error("Cloud authentication is not configured");
+    const redirectTo = `${window.location.origin}/`;
+    window.location.assign(`${state.url}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(redirectTo)}`);
+  }
+
+  async function sendPhoneOtp(phone, username = "") {
+    const normalized = String(phone).replace(/[\s()-]/g, "");
+    if (!/^\+[1-9]\d{7,14}$/.test(normalized)) throw new Error("Use international format, for example +919876543210");
+    const response = await fetch(`${state.url}/auth/v1/otp`, {
+      method: "POST",
+      headers: authHeaders(null),
+      body: JSON.stringify({ phone: normalized, create_user: true, ...(username.trim() ? { data: { username: username.trim() } } : {}) }),
+    });
+    const data = await readJson(response);
+    if (!response.ok) throw new Error(data.msg || data.error_description || data.message || "Could not send OTP");
+    return { phone: normalized, ...data };
+  }
+
+  async function verifyPhoneOtp(phone, token) {
+    const response = await fetch(`${state.url}/auth/v1/verify`, {
+      method: "POST",
+      headers: authHeaders(null),
+      body: JSON.stringify({ phone, token: String(token).trim(), type: "sms" }),
+    });
+    const data = await readJson(response);
+    if (!response.ok) throw new Error(data.msg || data.error_description || data.message || "OTP verification failed");
     if (data.access_token) saveSession(data);
     return data;
   }
@@ -182,5 +248,5 @@
     renderAccount();
   }
 
-  window.AntimonyCloud = { state, init, authenticate, syncMessage, syncAgent, listChats, loadChat, deleteChat, newChat, signOut, renderAccount };
+  window.AntimonyCloud = { state, init, authenticate, signInWithGoogle, sendPhoneOtp, verifyPhoneOtp, syncMessage, syncAgent, listChats, loadChat, deleteChat, newChat, signOut, renderAccount, displayName };
 })();

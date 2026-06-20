@@ -76,7 +76,19 @@ create policy "tasks own rows" on public.antimony_tasks for all using (auth.uid(
 create or replace function public.handle_new_user()
 returns trigger language plpgsql security definer set search_path = public as $$
 begin
-  insert into public.profiles(id, display_name) values (new.id, split_part(new.email, '@', 1)) on conflict do nothing;
+  insert into public.profiles(id, display_name)
+  values (
+    new.id,
+    coalesce(
+      nullif(trim(new.raw_user_meta_data ->> 'username'), ''),
+      nullif(trim(new.raw_user_meta_data ->> 'full_name'), ''),
+      nullif(split_part(coalesce(new.email, ''), '@', 1), ''),
+      case when new.phone is not null then 'User ' || right(new.phone, 4) else 'Antimony User' end
+    )
+  )
+  on conflict (id) do update set
+    display_name = coalesce(nullif(public.profiles.display_name, ''), excluded.display_name),
+    updated_at = now();
   return new;
 end;
 $$;

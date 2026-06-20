@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Antimony Anime AI Assistant</title>
-  <link rel="stylesheet" href="assistant_web.css?v=20260620-cloud-public" />
+  <link rel="stylesheet" href="assistant_web.css?v=20260620-auth-upgrade" />
 </head>
 <body>
   <main class="shell">
@@ -157,17 +157,33 @@
       <div class="auth-brand"><span>Antimony Cloud</span><h2 id="authTitle">Your agents, everywhere.</h2><p>Sign in to sync chats, custom agents, and progress across devices.</p></div>
       <form id="authForm">
         <div class="auth-modes"><button class="active" type="button" data-auth-mode="login">Log in</button><button type="button" data-auth-mode="signup">Create account</button></div>
+        <label id="authUsernameLabel" hidden>Username<input id="authUsername" type="text" autocomplete="username" minlength="2" maxlength="32" placeholder="sarker" /></label>
         <label>Email<input id="authEmail" type="email" autocomplete="email" required /></label>
         <label>Password<input id="authPassword" type="password" autocomplete="current-password" minlength="8" required /></label>
         <p id="authError"></p>
         <button id="authSubmit" type="submit">Log in</button>
       </form>
+      <div class="auth-divider"><span>or</span></div>
+      <div class="auth-providers">
+        <button id="googleSignIn" type="button">Continue with Google</button>
+        <button id="showPhoneAuth" type="button">Use mobile number</button>
+      </div>
+      <section id="phoneAuth" class="phone-auth" hidden>
+        <label>Username <span>(for new accounts)</span><input id="phoneUsername" type="text" autocomplete="username" maxlength="32" placeholder="sarker" /></label>
+        <label>Mobile number<input id="authPhone" type="tel" autocomplete="tel" inputmode="tel" placeholder="+919876543210" /></label>
+        <button id="sendPhoneOtp" type="button">Send OTP</button>
+        <div id="phoneOtpPanel" hidden>
+          <label>6-digit OTP<input id="authPhoneOtp" type="text" autocomplete="one-time-code" inputmode="numeric" maxlength="6" placeholder="123456" /></label>
+          <button id="verifyPhoneOtp" type="button">Verify and sign in</button>
+        </div>
+        <p id="phoneAuthError"></p>
+      </section>
       <section id="accountPanel" hidden><p id="accountEmail"></p><button id="signOutButton" type="button">Sign out</button></section>
     </div>
   </section>
 
   <script src="/api/config"></script>
-  <script src="cloud_auth.js?v=20260620-vercel-config"></script>
-  <script src="assistant_web.js?v=20260620-vercel-config"></script>
+  <script src="cloud_auth.js?v=20260620-auth-upgrade"></script>
+  <script src="assistant_web.js?v=20260620-auth-upgrade"></script>
 </body>
 </html>

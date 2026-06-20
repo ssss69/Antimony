@@ -26,6 +26,25 @@ const personas = {
   },
 };
 
+function avatarFallback(name = "AI") {
+  const initials = String(name).split(/\s+/).map(part => part[0]).join("").slice(0, 2).toUpperCase() || "AI";
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="720" height="720"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#1b2357"/><stop offset="1" stop-color="#7b46d9"/></linearGradient></defs><rect width="100%" height="100%" fill="url(#g)"/><circle cx="360" cy="300" r="160" fill="#ffffff18"/><text x="360" y="390" text-anchor="middle" font-family="Segoe UI,Arial" font-size="180" font-weight="800" fill="#f4edff">${initials}</text></svg>`;
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}
+
+function setAvatarImage(element, src, name) {
+  if (!element) return;
+  element.onerror = () => { element.onerror = null; element.src = avatarFallback(name); };
+  element.src = src || avatarFallback(name);
+}
+
+document.addEventListener("error", event => {
+  const image = event.target;
+  if (!(image instanceof HTMLImageElement) || image.dataset.fallbackApplied) return;
+  image.dataset.fallbackApplied = "true";
+  image.src = avatarFallback(image.alt || "AI");
+}, true);
+
 let persona = "soren";
 const localTodos = {};
 let voiceEnabled = false;
@@ -215,9 +234,9 @@ function setPersona(key) {
   persona = key;
   const spec = personas[key];
   document.body.dataset.persona = key;
-  if (avatar) avatar.src = spec.img;
-  if (heroAvatar) heroAvatar.src = spec.img;
-  if (agentMini) agentMini.src = spec.img;
+  setAvatarImage(avatar, spec.img, spec.name);
+  setAvatarImage(heroAvatar, spec.img, spec.name);
+  setAvatarImage(agentMini, spec.img, spec.name);
   if (personaName) personaName.textContent = spec.name;
   if (activeAgentName) activeAgentName.textContent = spec.name;
   if (activeAgentVibe) activeAgentVibe.textContent = spec.vibe;
@@ -928,16 +947,50 @@ async function startNewChat() {
 
 document.querySelector("#savedNewChat")?.addEventListener("click", startNewChat);
 document.querySelector("#chatNav")?.addEventListener("click", startNewChat);
+function resetChatPosition() {
+  chatWindow.classList.remove("dragging");
+  for (const property of ["left", "top", "width", "height", "right", "bottom"]) chatWindow.style[property] = "";
+}
 document.querySelector("#minChat")?.addEventListener("click", () => {
-  chatWindow.classList.toggle("minimized");
+  const wasMinimized = chatWindow.classList.contains("minimized");
+  resetChatPosition();
+  chatWindow.classList.toggle("minimized", !wasMinimized);
   chatWindow.classList.remove("maximized");
 });
 document.querySelector("#maxChat")?.addEventListener("click", () => {
+  resetChatPosition();
   chatWindow.classList.toggle("maximized");
   chatWindow.classList.remove("minimized");
   messages.scrollTop = messages.scrollHeight;
 });
 document.querySelector("#newChat").onclick = startNewChat;
+
+const chatWindowBar = chatWindow?.querySelector(".window-bar");
+let chatDrag = null;
+chatWindowBar?.addEventListener("pointerdown", event => {
+  if (event.target.closest("button") || window.matchMedia("(max-width: 1100px)").matches || chatWindow.classList.contains("maximized")) return;
+  const rect = chatWindow.getBoundingClientRect();
+  chatWindow.classList.add("dragging");
+  chatWindow.classList.remove("minimized");
+  Object.assign(chatWindow.style, { left: `${rect.left}px`, top: `${rect.top}px`, width: `${rect.width}px`, height: `${rect.height}px` });
+  chatDrag = { pointerId: event.pointerId, offsetX: event.clientX - rect.left, offsetY: event.clientY - rect.top };
+  chatWindowBar.setPointerCapture(event.pointerId);
+});
+chatWindowBar?.addEventListener("pointermove", event => {
+  if (!chatDrag || event.pointerId !== chatDrag.pointerId) return;
+  const left = Math.max(8, Math.min(window.innerWidth - chatWindow.offsetWidth - 8, event.clientX - chatDrag.offsetX));
+  const top = Math.max(8, Math.min(window.innerHeight - chatWindow.offsetHeight - 8, event.clientY - chatDrag.offsetY));
+  chatWindow.style.left = `${left}px`;
+  chatWindow.style.top = `${top}px`;
+});
+function endChatDrag(event) {
+  if (!chatDrag || event.pointerId !== chatDrag.pointerId) return;
+  chatDrag = null;
+  if (chatWindowBar.hasPointerCapture(event.pointerId)) chatWindowBar.releasePointerCapture(event.pointerId);
+}
+chatWindowBar?.addEventListener("pointerup", endChatDrag);
+chatWindowBar?.addEventListener("pointercancel", endChatDrag);
+chatWindowBar?.addEventListener("dblclick", event => { if (!event.target.closest("button")) resetChatPosition(); });
 
 function updateStudioPreview() {
   const name = newAgentName.value.trim() || "Your Agent";
@@ -1057,11 +1110,14 @@ document.querySelectorAll("[data-market-tab]").forEach(button => button.addEvent
 }));
 
 let authMode = "login";
+let pendingPhone = "";
 document.querySelectorAll("[data-auth-mode]").forEach(button => button.addEventListener("click", () => {
   authMode = button.dataset.authMode;
   document.querySelectorAll("[data-auth-mode]").forEach(item => item.classList.toggle("active", item === button));
   document.querySelector("#authSubmit").textContent = authMode === "signup" ? "Create account" : "Log in";
   document.querySelector("#authPassword").autocomplete = authMode === "signup" ? "new-password" : "current-password";
+  document.querySelector("#authUsernameLabel").hidden = authMode !== "signup";
+  document.querySelector("#authUsername").required = authMode === "signup";
 }));
 document.querySelector("#authForm")?.addEventListener("submit", async event => {
   event.preventDefault();
@@ -1075,6 +1131,7 @@ document.querySelector("#authForm")?.addEventListener("submit", async event => {
       document.querySelector("#authEmail").value.trim(),
       document.querySelector("#authPassword").value,
       authMode,
+      document.querySelector("#authUsername").value.trim(),
     );
     if (!data.access_token && authMode === "signup") error.textContent = "Account created. Check your email, then log in.";
   } catch (authError) {
@@ -1082,6 +1139,45 @@ document.querySelector("#authForm")?.addEventListener("submit", async event => {
   } finally {
     submit.disabled = false;
     submit.textContent = authMode === "signup" ? "Create account" : "Log in";
+  }
+});
+document.querySelector("#googleSignIn")?.addEventListener("click", () => {
+  const error = document.querySelector("#authError");
+  try { window.AntimonyCloud.signInWithGoogle(); }
+  catch (authError) { error.textContent = authError.message; }
+});
+document.querySelector("#showPhoneAuth")?.addEventListener("click", () => {
+  const panel = document.querySelector("#phoneAuth");
+  panel.hidden = !panel.hidden;
+});
+document.querySelector("#sendPhoneOtp")?.addEventListener("click", async event => {
+  const error = document.querySelector("#phoneAuthError");
+  error.textContent = "";
+  event.currentTarget.disabled = true;
+  try {
+    const result = await window.AntimonyCloud.sendPhoneOtp(
+      document.querySelector("#authPhone").value,
+      document.querySelector("#phoneUsername").value,
+    );
+    pendingPhone = result.phone;
+    document.querySelector("#phoneOtpPanel").hidden = false;
+    error.textContent = "OTP sent. Enter the code from your phone.";
+  } catch (authError) {
+    error.textContent = authError.message;
+  } finally {
+    event.currentTarget.disabled = false;
+  }
+});
+document.querySelector("#verifyPhoneOtp")?.addEventListener("click", async event => {
+  const error = document.querySelector("#phoneAuthError");
+  error.textContent = "";
+  event.currentTarget.disabled = true;
+  try {
+    await window.AntimonyCloud.verifyPhoneOtp(pendingPhone, document.querySelector("#authPhoneOtp").value);
+  } catch (authError) {
+    error.textContent = authError.message;
+  } finally {
+    event.currentTarget.disabled = false;
   }
 });
 document.querySelector("#accountButton")?.addEventListener("click", () => {
