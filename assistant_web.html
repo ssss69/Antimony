@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Antimony Anime AI Assistant</title>
+  <link rel="stylesheet" href="assistant_web.css?v=20260620-cloud-public" />
+</head>
+<body>
+  <main class="shell">
+    <aside class="left-rail">
+      <div class="rail-brand"><div><strong>Antimony</strong><span>AI Companion OS</span></div><button id="accountButton" type="button" hidden><span id="accountLabel">Sign in</span></button></div>
+      <section class="glass agent-panel">
+        <img id="agentMini" src="assets/soren.png" alt="Active assistant" />
+        <div>
+          <span>Current Agent Status</span>
+          <strong id="activeAgentName">Soren</strong>
+          <p id="activeAgentVibe">Calm strategist mode</p>
+          <div class="agent-progress"><span id="agentRelationship">New Link</span><b id="agentLevel">Lv. 1</b></div>
+        </div>
+      </section>
+
+      <nav>
+        <button class="nav active" data-prompt="what can you do"><b>Home</b><span>Home</span></button>
+        <button class="nav" id="chatNav" type="button"><b>Chat</b><span>Chat</span></button>
+        <a class="nav" href="otakus_cloud.html"><b>Cloud</b><span>Otaku's Cloud</span></a>
+        <a class="nav" href="writing_zone.html"><b>Write</b><span>Writing Zone</span></a>
+      </nav>
+
+      <section class="glass agent-create">
+        <button id="createAgentOpen" type="button">Create Agent</button>
+        <button id="importAgentOpen" type="button">Import Agent</button>
+        <button id="marketplaceOpen" type="button">Marketplace</button>
+        <input id="importAgentFile" type="file" accept="application/json,.json" hidden />
+      </section>
+
+      <section class="glass voice-card">
+        <div class="panel-title">Voice Status <button id="voicePulse">x</button></div>
+        <div class="wave"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        <p>Click Mic and allow browser microphone access.</p>
+        <button class="round" data-action="voice">Mic</button>
+      </section>
+
+    </aside>
+
+    <aside class="right-rail">
+      <section class="glass system-dock">
+        <div><span>Status</span><b class="online">Online</b></div>
+        <div><span>Model</span><b id="modelStatus">Checking...</b></div>
+        <div><span>Memory</span><b id="memoryStatus">SQLite DB</b></div>
+      </section>
+      <section class="glass tool-suite">
+        <div class="panel-title">AI Tools Suite</div>
+        <div id="toolsList" class="tools-list">
+          <button data-prompt="tools"><span class="tool-dot"></span><span><b>Loading tools</b><small>Reading Python API</small></span></button>
+        </div>
+      </section>
+
+      <section class="glass saved">
+        <div class="panel-title">Saved Chats <span><button id="savedNewChat">New</button><button id="refreshSessions">Refresh</button></span></div>
+        <div id="sessions" class="sessions"></div>
+      </section>
+
+      <section class="glass calendar-card">
+        <div class="panel-title">Calendar <span id="calendarMonth"></span></div>
+        <div id="calendarGrid" class="calendar-grid"></div>
+        <button data-prompt="calendar this month">Open Schedule</button>
+      </section>
+
+      <section class="glass tasks">
+        <div class="panel-title">Task Manager</div>
+        <form id="taskForm" class="task-form">
+          <input id="taskInput" autocomplete="off" placeholder="Add a new task..." />
+          <button type="submit">Add</button>
+        </form>
+        <div id="tasksList" class="tasks-list"></div>
+      </section>
+    </aside>
+
+    <section class="chat-window glass">
+      <div class="window-bar">
+        <span>Chat Window</span>
+        <div>
+          <button id="minChat" type="button">Min</button>
+          <button id="maxChat" type="button">Max</button>
+          <button id="newChat" type="button">New</button>
+        </div>
+      </div>
+      <section id="messages" class="messages"></section>
+      <form id="composer" class="composer">
+        <input id="messageInput" autocomplete="off" placeholder="Type your message..." />
+        <button type="submit">Send</button>
+      </form>
+    </section>
+
+    <section class="mode-panel glass" id="modePanel">
+      <div class="panel-title"><span id="modeTitle">Antimony Modes</span><button id="closeMode" type="button">Close</button></div>
+      <div id="modeTools" class="mode-tools"></div>
+    </section>
+
+  </main>
+
+  <section class="studio-overlay" id="agentStudio" hidden>
+    <div class="agent-studio glass" role="dialog" aria-modal="true" aria-labelledby="studioTitle">
+      <header>
+        <div><span>Antimony Creator</span><h2 id="studioTitle">Agent Studio</h2></div>
+        <button id="cancelAgentCreate" type="button" aria-label="Close Agent Studio">x</button>
+      </header>
+      <div class="studio-templates" id="agentTemplates">
+        <button type="button" data-template="companion">Companion</button>
+        <button type="button" data-template="study">Study</button>
+        <button type="button" data-template="coding">Coding</button>
+        <button type="button" data-template="writing">Writing</button>
+        <button type="button" data-template="research">Research</button>
+        <button type="button" data-template="anime">Anime</button>
+      </div>
+      <form id="createAgentForm" class="studio-body">
+        <div class="studio-fields">
+          <label>Name<input id="newAgentName" required maxlength="40" placeholder="Nova" /></label>
+          <label>Role<select id="newAgentRole"><option>AI Companion</option><option>Study Coach</option><option>Coding Mentor</option><option>Writing Partner</option><option>Research Analyst</option><option>Anime Specialist</option></select></label>
+          <label class="wide">Purpose<input id="newAgentPurpose" maxlength="300" placeholder="What should this agent help you achieve?" /></label>
+          <label class="wide">Personality and vibe<textarea id="newAgentVibe" required maxlength="160" placeholder="Calm, witty, loyal, challenges me when needed..."></textarea></label>
+          <label class="wide">Appearance prompt<textarea id="newAgentAppearance" maxlength="300" placeholder="Silver hair, teal eyes, futuristic scholar outfit..."></textarea></label>
+          <label>Traits<input id="newAgentTraits" maxlength="200" placeholder="patient, strategic, funny" /></label>
+          <label>Voice style<select id="newAgentVoice"><option value="balanced">Balanced</option><option value="calm">Calm</option><option value="energetic">Energetic</option><option value="deep">Deep</option><option value="gentle">Gentle</option></select></label>
+          <label class="wide">Goals<textarea id="newAgentGoals" maxlength="600" placeholder="One goal per line"></textarea></label>
+          <label class="wide">First greeting<input id="newAgentGreeting" maxlength="240" placeholder="A custom message when the agent comes online" /></label>
+          <label class="wide">Custom instructions<textarea id="newAgentInstructions" maxlength="1500" placeholder="How the agent should behave, teach, plan, and respond"></textarea></label>
+          <label class="wide">Starter knowledge<textarea id="newAgentKnowledge" maxlength="5000" placeholder="Facts, syllabus, project context, rules, or lore this agent should know"></textarea></label>
+          <fieldset class="wide pack-picker"><legend>Knowledge Packs</legend><div id="studioPackChoices"><span>Loading packs...</span></div></fieldset>
+          <label>Sharing<select id="newAgentVisibility"><option value="private">Private</option><option value="shared">Shareable</option></select></label>
+        </div>
+        <aside class="studio-preview">
+          <div class="preview-avatar" id="studioAvatar"><span>AI</span></div>
+          <span id="studioTemplateLabel">Custom Agent</span>
+          <h3 id="studioPreviewName">Your Agent</h3>
+          <p id="studioPreviewRole">AI Companion</p>
+          <small id="studioPreviewVibe">Build a personality people remember.</small>
+          <div class="studio-actions"><button type="submit" id="generateAgent">Generate Agent</button><button type="button" id="studioReset">Reset</button></div>
+        </aside>
+      </form>
+    </div>
+  </section>
+
+  <section class="studio-overlay" id="marketplace" hidden>
+    <div class="marketplace glass" role="dialog" aria-modal="true" aria-labelledby="marketplaceTitle">
+      <header><div><span>Antimony Network</span><h2 id="marketplaceTitle">Agent Marketplace</h2></div><button id="marketplaceClose" type="button">x</button></header>
+      <div class="market-tabs"><button class="active" type="button" data-market-tab="agents">Agents</button><button type="button" data-market-tab="packs">Knowledge Packs</button></div>
+      <section id="marketAgents" class="market-grid"></section>
+      <section id="marketPacks" class="market-grid" hidden></section>
+    </div>
+  </section>
+
+  <section class="studio-overlay" id="authOverlay" hidden>
+    <div class="auth-dialog glass" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+      <button id="authClose" class="auth-close" type="button">x</button>
+      <div class="auth-brand"><span>Antimony Cloud</span><h2 id="authTitle">Your agents, everywhere.</h2><p>Sign in to sync chats, custom agents, and progress across devices.</p></div>
+      <form id="authForm">
+        <div class="auth-modes"><button class="active" type="button" data-auth-mode="login">Log in</button><button type="button" data-auth-mode="signup">Create account</button></div>
+        <label>Email<input id="authEmail" type="email" autocomplete="email" required /></label>
+        <label>Password<input id="authPassword" type="password" autocomplete="current-password" minlength="8" required /></label>
+        <p id="authError"></p>
+        <button id="authSubmit" type="submit">Log in</button>
+      </form>
+      <section id="accountPanel" hidden><p id="accountEmail"></p><button id="signOutButton" type="button">Sign out</button></section>
+    </div>
+  </section>
+
+  <script src="cloud_auth.js?v=20260620-cloud-public"></script>
+  <script src="assistant_web.js?v=20260620-cloud-public"></script>
+</body>
+</html>
