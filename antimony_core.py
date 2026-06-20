@@ -14,7 +14,6 @@ import sqlite3
 import subprocess
 import threading
 import time
-import tkinter as tk
 import random
 import secrets
 import string
@@ -24,7 +23,6 @@ from collections import Counter, defaultdict
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from tkinter import filedialog, scrolledtext
 from urllib import error, request
 from urllib.parse import parse_qs, quote, quote_plus, urlencode, urlparse
 
@@ -32,6 +30,16 @@ try:
     import winreg
 except ImportError:
     winreg = None
+
+# Tk is optional: Render and other hosted Linux environments do not include a
+# graphical display. The API and CLI must remain usable without desktop extras.
+try:
+    import tkinter as tk
+    from tkinter import filedialog, scrolledtext
+except ImportError:
+    tk = None
+    filedialog = None
+    scrolledtext = None
 
 from config import load_config
 from memory import MemoryView
@@ -3683,6 +3691,8 @@ def main():
         run_cli(args.once, args.persona)
         return
 
+    if tk is None:
+        raise RuntimeError("The desktop interface requires Tkinter. Use --api or --cli in a headless environment.")
     root = tk.Tk()
     AssistantApp(root)
     root.mainloop()
