@@ -186,15 +186,10 @@ def _fallback_agent_avatar(path, name, vibe):
     path.write_text(svg, encoding="utf-8")
 
 
-def _generate_agent_avatar(openai_client, path, name, vibe, appearance=""):
-    prompt = (
-        "Original anime AI assistant portrait, polished high-tech glassmorphism UI avatar, "
-        "upper body, elegant futuristic outfit, clean background, no text, no copyrighted character, "
-        f"name concept: {name}, personality vibe: {vibe}, requested appearance: {appearance or 'original distinctive design'}."
-    )
+def _generate_image_file(openai_client, path, prompt, seed_basis=""):
     image_provider = os.getenv("IMAGE_PROVIDER", "openai" if openai_client.image_enabled else "fallback").strip().lower()
     if image_provider == "pollinations":
-        seed = int(hashlib.sha256(f"{name}:{vibe}:{appearance}".encode("utf-8")).hexdigest()[:8], 16)
+        seed = int(hashlib.sha256((seed_basis or prompt).encode("utf-8")).hexdigest()[:8], 16)
         image_url = (
             f"https://image.pollinations.ai/prompt/{quote(prompt)}"
             f"?width=1024&height=1024&model=flux&enhance=true&seed={seed}"
@@ -209,12 +204,9 @@ def _generate_agent_avatar(openai_client, path, name, vibe, appearance=""):
             path.write_bytes(image_bytes)
             return path
         except Exception:
-            fallback = path.with_suffix(".svg")
-            _fallback_agent_avatar(fallback, name, vibe)
-            return fallback
+            return None
     if image_provider != "openai" or not openai_client.image_enabled:
-        _fallback_agent_avatar(path.with_suffix(".svg"), name, vibe)
-        return path.with_suffix(".svg")
+        return None
     payload = {
         "model": os.getenv("OPENAI_IMAGE_MODEL", "gpt-image-1-mini"),
         "prompt": prompt,
@@ -239,9 +231,37 @@ def _generate_agent_avatar(openai_client, path, name, vibe, appearance=""):
         path.write_bytes(base64.b64decode(b64))
         return path
     except Exception:
-        fallback = path.with_suffix(".svg")
-        _fallback_agent_avatar(fallback, name, vibe)
-        return fallback
+        return None
+
+
+def _generate_agent_avatar(openai_client, path, name, vibe, appearance=""):
+    prompt = (
+        "Original anime AI assistant portrait, polished high-tech glassmorphism UI avatar, "
+        "upper body, elegant futuristic outfit, clean background, no text, no copyrighted character, "
+        f"name concept: {name}, personality vibe: {vibe}, requested appearance: {appearance or 'original distinctive design'}."
+    )
+    generated = _generate_image_file(openai_client, path, prompt, f"{name}:{vibe}:{appearance}")
+    if generated:
+        return generated
+    fallback = path.with_suffix(".svg")
+    _fallback_agent_avatar(fallback, name, vibe)
+    return fallback
+
+
+def _response_image_prompt(user_text):
+    text = re.sub(r"\s+", " ", str(user_text)).strip()[:800]
+    lower = text.lower()
+    visual_markers = (
+        "generate an image", "create an image", "make an image", "image of ", "draw ", "illustrate ",
+        "visualize ", "visualise ", "diagram", "concept art", "poster", "logo", "portrait",
+    )
+    if not text or not any(marker in lower for marker in visual_markers):
+        return None
+    return (
+        f"Create a clear, polished visual for this request: {text}. "
+        "Use an original composition, strong visual hierarchy, and no copyrighted characters. "
+        "Avoid long written text inside the image."
+    )
 
 
 def load_custom_personas():
@@ -2377,6 +2397,8 @@ class AnimeAssistant:
         self.safety = SafetyScanner()
         self.permission_gate = PermissionGate(APP_CONFIG.get("require_permission_for_risky_tools", True))
         self._last_file_scan = 0.0
+        self._last_image_generation = 0.0
+        self._image_lock = threading.Lock()
         self._auto_search_seen = set()
         self.last_llm_error = None
         self.retrain()
@@ -3148,12 +3170,30 @@ h1{{margin:0 0 4px;font-size:30px}}p{{color:#aebbd7;margin:0 0 22px}}.online{{co
                     self._send(404, {"error": "Use GET /health, /personas, /tools, /todos, /sessions, /session?id=..., POST /chat, /train, /todo, or /reset"})
 
             def do_POST(self):
-                if self.path not in {"/chat", "/train", "/reset", "/todo", "/delete_session", "/persona", "/persona/import", "/persona/knowledge-pack", "/marketplace/install", "/knowledge/ingest", "/knowledge/scan", "/memory/summarize"}:
+                if self.path not in {"/chat", "/image", "/train", "/reset", "/todo", "/delete_session", "/persona", "/persona/import", "/persona/knowledge-pack", "/marketplace/install", "/knowledge/ingest", "/knowledge/scan", "/memory/summarize"}:
                     self._send(404, {"error": "Unknown endpoint"})
                     return
                 length = int(self.headers.get("Content-Length", "0"))
                 try:
                     data = json.loads(self.rfile.read(length).decode("utf-8"))
+                    if self.path == "/image":
+                        prompt = re.sub(r"\s+", " ", str(data.get("prompt", ""))).strip()[:1000]
+                        if len(prompt) < 8:
+                            raise ValueError("A descriptive image prompt is required")
+                        if assistant.safety.api_key_leak(prompt) or assistant.safety.prompt_injection(prompt):
+                            raise ValueError("Image prompt blocked by safety checks")
+                        with assistant._image_lock:
+                            now = time.time()
+                            if now - assistant._last_image_generation < 15:
+                                raise ValueError("Please wait a few seconds before generating another image")
+                            assistant._last_image_generation = now
+                        ASSET_DIR.mkdir(exist_ok=True)
+                        image_path = ASSET_DIR / f"response_{int(now)}_{secrets.token_hex(3)}.png"
+                        generated = _generate_image_file(assistant.openai, image_path, prompt, prompt)
+                        if not generated:
+                            raise ValueError("The image provider is unavailable. Try again shortly")
+                        self._send(200, {"ok": True, "image": f"assets/{generated.name}", "alt": "Generated response visual"})
+                        return
                     if self.path == "/persona/knowledge-pack":
                         result = attach_knowledge_pack(assistant.db, str(data.get("persona", "")), str(data.get("pack_id", "")))
                         self._send(200, {"ok": True, **result})
@@ -3280,7 +3320,8 @@ h1{{margin:0 0 4px;font-size:30px}}p{{color:#aebbd7;margin:0 0 22px}}.online{{co
                     if not message:
                         raise ValueError("message is required")
                     reply = assistant.respond(message, persona)
-                    self._send(200, {"persona": assistant.persona["name"], "reply": reply})
+                    image_prompt = None if assistant.safety.api_key_leak(message) else _response_image_prompt(message)
+                    self._send(200, {"persona": assistant.persona["name"], "reply": reply, "image_prompt": image_prompt})
                 except Exception as exc:
                     self._send(400, {"error": str(exc)})
 

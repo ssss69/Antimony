@@ -185,18 +185,82 @@ const modes = {
   },
 };
 
-function linkify(text) {
-  const escaped = String(text)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;");
-  return escaped.replace(/https?:\/\/[^\s)>\]}"]+/g, url => `<a href="${url}" target="_blank" rel="noreferrer">${url}</a>`);
+function escapeHtml(text) {
+  return String(text).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
 }
+
+function renderInline(text) {
+  let html = escapeHtml(text);
+  const code = [];
+  html = html.replace(/`([^`]+)`/g, (_match, value) => { code.push(`<code>${value}</code>`); return `\u0000CODE${code.length - 1}\u0000`; });
+  html = html.replace(/\[([^\]]+)]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noreferrer">$1</a>');
+  html = html.replace(/(?<!["'=])(https?:\/\/[^\s<)\]}]+)/g, '<a href="$1" target="_blank" rel="noreferrer">$1</a>');
+  html = html.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+  html = html.replace(/__([^_]+)__/g, "<strong>$1</strong>");
+  html = html.replace(/(?<!\*)\*([^*\n]+)\*(?!\*)/g, "<em>$1</em>");
+  html = html.replace(/\u0000CODE(\d+)\u0000/g, (_match, index) => code[Number(index)]);
+  return html;
+}
+
+function markdownCells(line) {
+  return line.trim().replace(/^\||\|$/g, "").split("|").map(cell => cell.trim());
+}
+
+function renderMarkdown(text) {
+  const lines = String(text).replace(/\r\n?/g, "\n").split("\n");
+  const blocks = [];
+  for (let index = 0; index < lines.length;) {
+    const line = lines[index];
+    if (line.trim().startsWith("```")) {
+      const language = line.trim().slice(3).trim();
+      const content = [];
+      index += 1;
+      while (index < lines.length && !lines[index].trim().startsWith("```")) content.push(lines[index++]);
+      if (index < lines.length) index += 1;
+      blocks.push(`<pre><code data-language="${escapeHtml(language)}">${escapeHtml(content.join("\n"))}</code></pre>`);
+      continue;
+    }
+    if (line.includes("|") && index + 1 < lines.length) {
+      const header = markdownCells(line);
+      const separators = markdownCells(lines[index + 1]);
+      if (header.length > 1 && separators.length === header.length && separators.every(cell => /^:?-{3,}:?$/.test(cell))) {
+        index += 2;
+        const rows = [];
+        while (index < lines.length && lines[index].includes("|") && lines[index].trim()) rows.push(markdownCells(lines[index++]));
+        blocks.push(`<div class="table-wrap"><table><thead><tr>${header.map(cell => `<th>${renderInline(cell)}</th>`).join("")}</tr></thead><tbody>${rows.map(row => `<tr>${header.map((_cell, cellIndex) => `<td>${renderInline(row[cellIndex] || "")}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`);
+        continue;
+      }
+    }
+    const heading = line.match(/^(#{1,6})\s+(.+)$/);
+    if (heading) { const level = heading[1].length; blocks.push(`<h${level}>${renderInline(heading[2])}</h${level}>`); index += 1; continue; }
+    if (/^\s*[-*+]\s+/.test(line)) {
+      const items = [];
+      while (index < lines.length && /^\s*[-*+]\s+/.test(lines[index])) items.push(lines[index++].replace(/^\s*[-*+]\s+/, ""));
+      blocks.push(`<ul>${items.map(item => `<li>${renderInline(item)}</li>`).join("")}</ul>`);
+      continue;
+    }
+    if (/^\s*\d+[.)]\s+/.test(line)) {
+      const items = [];
+      while (index < lines.length && /^\s*\d+[.)]\s+/.test(lines[index])) items.push(lines[index++].replace(/^\s*\d+[.)]\s+/, ""));
+      blocks.push(`<ol>${items.map(item => `<li>${renderInline(item)}</li>`).join("")}</ol>`);
+      continue;
+    }
+    if (/^\s*---+\s*$/.test(line)) { blocks.push("<hr>"); index += 1; continue; }
+    if (!line.trim()) { index += 1; continue; }
+    const paragraph = [line];
+    index += 1;
+    while (index < lines.length && lines[index].trim() && !/^(#{1,6})\s+/.test(lines[index]) && !/^\s*[-*+]\s+/.test(lines[index]) && !/^\s*\d+[.)]\s+/.test(lines[index]) && !lines[index].trim().startsWith("```")) paragraph.push(lines[index++]);
+    blocks.push(`<p>${paragraph.map(renderInline).join("<br>")}</p>`);
+  }
+  return blocks.join("");
+}
+
+function linkify(text) { return renderInline(text); }
 
 function addMessage(sender, text, role = "assistant") {
   const node = document.createElement("article");
   node.className = `msg ${role}`;
-  node.innerHTML = `<strong>${sender}</strong>${linkify(text)}`;
+  node.innerHTML = `<strong class="message-sender">${escapeHtml(sender)}</strong><div class="message-content">${renderMarkdown(text)}</div>`;
   messages.appendChild(node);
   messages.scrollTop = messages.scrollHeight;
 }
@@ -208,6 +272,36 @@ function addThinkingMessage(sender) {
   messages.appendChild(node);
   messages.scrollTop = messages.scrollHeight;
   return node;
+}
+
+async function generateResponseImage(prompt, sender) {
+  const thinking = addThinkingMessage(`${sender} visual`);
+  try {
+    const response = await fetch(`${API}/image`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt }),
+    });
+    const data = await response.json();
+    if (!response.ok || !data.image) throw new Error(data.error || "Image generation failed");
+    thinking.remove();
+    const node = document.createElement("article");
+    node.className = "msg assistant visual-message";
+    const label = document.createElement("strong");
+    label.className = "message-sender";
+    label.textContent = `${sender} visual`;
+    const image = document.createElement("img");
+    image.className = "response-image";
+    image.src = resolveAvatarSource(data.image);
+    image.alt = data.alt || "Generated response visual";
+    image.loading = "lazy";
+    node.append(label, image);
+    messages.appendChild(node);
+    messages.scrollTop = messages.scrollHeight;
+  } catch (error) {
+    thinking.remove();
+    addMessage("System", `Could not generate the requested visual. ${error.message}`);
+  }
 }
 
 function addGeneratedAgentCard(spec) {
@@ -275,7 +369,9 @@ async function sendMessage(text) {
     const data = await res.json();
     const reply = data.reply || data.error || "No response.";
     thinking.remove();
-    addMessage(data.persona || personas[persona]?.name || "Assistant", reply);
+    const sender = data.persona || personas[persona]?.name || "Assistant";
+    addMessage(sender, reply);
+    if (data.image_prompt) generateResponseImage(data.image_prompt, sender);
     window.AntimonyCloud?.syncMessage("assistant", reply, persona).catch(() => {});
     speakText(reply);
     refreshAgentProgress();
