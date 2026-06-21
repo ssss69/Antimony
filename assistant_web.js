@@ -32,10 +32,19 @@ function avatarFallback(name = "AI") {
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
 
+function resolveAvatarSource(src) {
+  const value = String(src || "").trim();
+  const builtIn = value.match(/^\/?assets\/(soren|renji|kael|mira)\.png$/i);
+  if (builtIn) return `/${builtIn[1].toLowerCase()}.png`;
+  if (/^(?:data:|blob:|https?:\/\/)/i.test(value)) return value;
+  if (/^\/?assets\//i.test(value)) return `${API}/${value.replace(/^\//, "")}`;
+  return value;
+}
+
 function setAvatarImage(element, src, name) {
   if (!element) return;
   element.onerror = () => { element.onerror = null; element.src = avatarFallback(name); };
-  const normalized = String(src || "").replace(/^\/?assets\/(soren|renji|kael|mira)\.png$/i, "/$1.png");
+  const normalized = resolveAvatarSource(src);
   element.src = normalized || avatarFallback(name);
 }
 
@@ -207,7 +216,7 @@ function addGeneratedAgentCard(spec) {
   node.innerHTML = `
     <strong>${spec.name}</strong>
     <div class="generated-agent-card">
-      <img src="${spec.img}" alt="${spec.name} generated portrait" />
+      <img src="${resolveAvatarSource(spec.img)}" alt="${spec.name} generated portrait" />
       <div>
         <b>Generated agent image created</b>
         <span>${linkify(spec.vibe)}</span>
@@ -368,7 +377,7 @@ async function loadPersonas() {
       personas[key] = {
         ...value,
         name: value.name || key,
-        img: String(value.image || personas[key]?.img || "/soren.png").replace(/^\/?assets\/(soren|renji|kael|mira)\.png$/i, "/$1.png"),
+        img: resolveAvatarSource(value.image || personas[key]?.img || "/soren.png"),
         vibe: value.vibe || personas[key]?.vibe || "Custom assistant mode",
         quote: value.quote || personas[key]?.quote || `"${value.vibe || "Ready to help."}"`,
         custom: Boolean(value.custom),
@@ -435,7 +444,7 @@ async function installMarketplaceAgent(item) {
     });
     const data = await res.json();
     if (!res.ok || !data.ok) throw new Error(data.error || "Could not install agent");
-    personas[data.key] = { ...data.persona, img: data.persona.image, custom: true };
+    personas[data.key] = { ...data.persona, img: resolveAvatarSource(data.persona.image), custom: true };
     window.AntimonyCloud?.syncAgent(data.key, personas[data.key]).catch(() => {});
     buildPersonaButtons();
     setPersona(data.key);
@@ -501,7 +510,7 @@ async function createAgent(name, vibe, profile) {
     personas[data.key] = {
       ...data.persona,
       name: data.persona.name,
-      img: data.persona.image,
+      img: resolveAvatarSource(data.persona.image),
       vibe: data.persona.vibe,
       quote: data.persona.quote || `"${data.persona.vibe}"`,
       custom: true,
@@ -541,7 +550,7 @@ async function importAgentPackage(agent) {
   });
   const data = await res.json();
   if (!res.ok || !data.ok) throw new Error(data.error || "Could not import agent");
-  personas[data.key] = { ...data.persona, img: data.persona.image, custom: true };
+  personas[data.key] = { ...data.persona, img: resolveAvatarSource(data.persona.image), custom: true };
   window.AntimonyCloud?.syncAgent(data.key, personas[data.key]).catch(() => {});
   buildPersonaButtons();
   setPersona(data.key);
