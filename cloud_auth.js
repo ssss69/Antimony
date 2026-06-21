@@ -48,7 +48,6 @@
     const accountEmail = document.querySelector("#accountEmail");
     const divider = document.querySelector(".auth-divider");
     const providers = document.querySelector(".auth-providers");
-    const phoneAuth = document.querySelector("#phoneAuth");
     const close = document.querySelector("#authClose");
     if (!button) return;
     if (!state.enabled) {
@@ -63,7 +62,6 @@
       form.hidden = true;
       if (divider) divider.hidden = true;
       if (providers) providers.hidden = true;
-      if (phoneAuth) phoneAuth.hidden = true;
       panel.hidden = false;
       accountEmail.textContent = `Signed in as ${displayName()}`;
       close.hidden = false;
@@ -146,30 +144,6 @@
     window.location.assign(`${state.url}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(redirectTo)}`);
   }
 
-  async function sendPhoneOtp(phone, username = "") {
-    const normalized = String(phone).replace(/[\s()-]/g, "");
-    if (!/^\+[1-9]\d{7,14}$/.test(normalized)) throw new Error("Use international format, for example +919876543210");
-    const response = await fetch(`${state.url}/auth/v1/otp`, {
-      method: "POST",
-      headers: authHeaders(null),
-      body: JSON.stringify({ phone: normalized, create_user: true, ...(username.trim() ? { data: { username: username.trim() } } : {}) }),
-    });
-    const data = await readJson(response);
-    if (!response.ok) throw new Error(data.msg || data.error_description || data.message || "Could not send OTP");
-    return { phone: normalized, ...data };
-  }
-
-  async function verifyPhoneOtp(phone, token) {
-    const response = await fetch(`${state.url}/auth/v1/verify`, {
-      method: "POST",
-      headers: authHeaders(null),
-      body: JSON.stringify({ phone, token: String(token).trim(), type: "sms" }),
-    });
-    const data = await readJson(response);
-    if (!response.ok) throw new Error(data.msg || data.error_description || data.message || "OTP verification failed");
-    if (data.access_token) saveSession(data);
-    return data;
-  }
 
   async function cloudInsert(table, row) {
     if (!state.enabled || !state.session?.access_token) return;
@@ -248,5 +222,5 @@
     renderAccount();
   }
 
-  window.AntimonyCloud = { state, init, authenticate, signInWithGoogle, sendPhoneOtp, verifyPhoneOtp, syncMessage, syncAgent, listChats, loadChat, deleteChat, newChat, signOut, renderAccount, displayName };
+  window.AntimonyCloud = { state, init, authenticate, signInWithGoogle, syncMessage, syncAgent, listChats, loadChat, deleteChat, newChat, signOut, renderAccount, displayName };
 })();

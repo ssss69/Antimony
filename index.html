@@ -166,18 +166,7 @@
       <div class="auth-divider"><span>or</span></div>
       <div class="auth-providers">
         <button id="googleSignIn" type="button">Continue with Google</button>
-        <button id="showPhoneAuth" type="button">Use mobile number</button>
       </div>
-      <section id="phoneAuth" class="phone-auth" hidden>
-        <label>Username <span>(for new accounts)</span><input id="phoneUsername" type="text" autocomplete="username" maxlength="32" placeholder="sarker" /></label>
-        <label>Mobile number<input id="authPhone" type="tel" autocomplete="tel" inputmode="tel" placeholder="+919876543210" /></label>
-        <button id="sendPhoneOtp" type="button">Send OTP</button>
-        <div id="phoneOtpPanel" hidden>
-          <label>6-digit OTP<input id="authPhoneOtp" type="text" autocomplete="one-time-code" inputmode="numeric" maxlength="6" placeholder="123456" /></label>
-          <button id="verifyPhoneOtp" type="button">Verify and sign in</button>
-        </div>
-        <p id="phoneAuthError"></p>
-      </section>
       <section id="accountPanel" hidden><p id="accountEmail"></p><button id="signOutButton" type="button">Sign out</button></section>
     </div>
   </section>

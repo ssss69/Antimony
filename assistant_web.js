@@ -1110,7 +1110,6 @@ document.querySelectorAll("[data-market-tab]").forEach(button => button.addEvent
 }));
 
 let authMode = "login";
-let pendingPhone = "";
 document.querySelectorAll("[data-auth-mode]").forEach(button => button.addEventListener("click", () => {
   authMode = button.dataset.authMode;
   document.querySelectorAll("[data-auth-mode]").forEach(item => item.classList.toggle("active", item === button));
@@ -1145,40 +1144,6 @@ document.querySelector("#googleSignIn")?.addEventListener("click", () => {
   const error = document.querySelector("#authError");
   try { window.AntimonyCloud.signInWithGoogle(); }
   catch (authError) { error.textContent = authError.message; }
-});
-document.querySelector("#showPhoneAuth")?.addEventListener("click", () => {
-  const panel = document.querySelector("#phoneAuth");
-  panel.hidden = !panel.hidden;
-});
-document.querySelector("#sendPhoneOtp")?.addEventListener("click", async event => {
-  const error = document.querySelector("#phoneAuthError");
-  error.textContent = "";
-  event.currentTarget.disabled = true;
-  try {
-    const result = await window.AntimonyCloud.sendPhoneOtp(
-      document.querySelector("#authPhone").value,
-      document.querySelector("#phoneUsername").value,
-    );
-    pendingPhone = result.phone;
-    document.querySelector("#phoneOtpPanel").hidden = false;
-    error.textContent = "OTP sent. Enter the code from your phone.";
-  } catch (authError) {
-    error.textContent = authError.message;
-  } finally {
-    event.currentTarget.disabled = false;
-  }
-});
-document.querySelector("#verifyPhoneOtp")?.addEventListener("click", async event => {
-  const error = document.querySelector("#phoneAuthError");
-  error.textContent = "";
-  event.currentTarget.disabled = true;
-  try {
-    await window.AntimonyCloud.verifyPhoneOtp(pendingPhone, document.querySelector("#authPhoneOtp").value);
-  } catch (authError) {
-    error.textContent = authError.message;
-  } finally {
-    event.currentTarget.disabled = false;
-  }
 });
 document.querySelector("#accountButton")?.addEventListener("click", () => {
   document.querySelector("#authOverlay").hidden = false;
