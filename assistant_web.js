@@ -218,7 +218,7 @@ function addGeneratedAgentCard(spec) {
     <div class="generated-agent-card">
       <img src="${resolveAvatarSource(spec.img)}" alt="${spec.name} generated portrait" />
       <div>
-        <b>Generated agent image created</b>
+        <b>${spec.image_generated ? "AI-generated agent portrait created" : "Agent portrait placeholder created"}</b>
         <span>${linkify(spec.vibe)}</span>
       </div>
     </div>

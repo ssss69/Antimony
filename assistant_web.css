@@ -84,7 +84,7 @@ body {
     linear-gradient(135deg, var(--page-0) 0%, var(--page-1) 45%, var(--page-2) 100%);
   color: var(--text);
   font: 14px/1.4 "Segoe UI", system-ui, sans-serif;
-  overflow: hidden;
+  overflow: auto;
 }
 body::before {
   content: "";
@@ -118,6 +118,8 @@ button:hover, button.active, a.mode-link:hover, .quick-link:hover {
 
 .shell {
   min-height: 100vh;
+  height: 100vh;
+  overflow: auto;
   display: grid;
   grid-template-columns: 280px minmax(480px, 1fr) 330px;
   grid-template-rows: minmax(0, 1fr) 112px;
@@ -356,6 +358,8 @@ nav {
   width: min(1040px, 96vw);
   max-height: 92vh;
   overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
   padding: 0;
   border-color: color-mix(in srgb, var(--accent-c) 52%, transparent);
 }
@@ -697,11 +701,20 @@ nav {
   min-height: 420px;
   max-height: none;
   overflow: auto;
+  scroll-behavior: smooth;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
   padding: 12px;
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
+.messages, .left-rail, .right-rail, .agent-studio, .marketplace, .shell {
+  scrollbar-width: thin;
+  scrollbar-color: var(--accent-a) rgba(7, 11, 28, .7);
+}
+.messages::-webkit-scrollbar, .left-rail::-webkit-scrollbar, .right-rail::-webkit-scrollbar, .agent-studio::-webkit-scrollbar, .marketplace::-webkit-scrollbar, .shell::-webkit-scrollbar { width: 10px; height: 10px; }
+.messages::-webkit-scrollbar-thumb, .left-rail::-webkit-scrollbar-thumb, .right-rail::-webkit-scrollbar-thumb, .agent-studio::-webkit-scrollbar-thumb, .marketplace::-webkit-scrollbar-thumb, .shell::-webkit-scrollbar-thumb { background: var(--accent-a); border-radius: 999px; border: 2px solid rgba(7, 11, 28, .7); }
 .msg {
   max-width: 86%;
   padding: 10px 12px;

@@ -128,11 +128,13 @@ def _persona_public(spec):
             image = image.relative_to(APP_DIR).as_posix()
         except ValueError:
             image = image.as_posix()
+    image_suffix = Path(image).suffix.lower() if image and not str(image).startswith("data:") else ""
     return {
         "name": spec.get("name", "Agent"),
         "label": spec.get("label", "Custom AI"),
         "vibe": spec.get("short", ""),
         "image": image,
+        "image_generated": bool(image) and image_suffix != ".svg",
         "quote": spec.get("quote", f"\"{spec.get('short', 'Ready to help')}.\""),
         "custom": bool(spec.get("custom")),
         "role": spec.get("role", "General Assistant"),
@@ -190,13 +192,33 @@ def _generate_agent_avatar(openai_client, path, name, vibe, appearance=""):
         "upper body, elegant futuristic outfit, clean background, no text, no copyrighted character, "
         f"name concept: {name}, personality vibe: {vibe}, requested appearance: {appearance or 'original distinctive design'}."
     )
-    if not openai_client.enabled:
+    image_provider = os.getenv("IMAGE_PROVIDER", "openai" if openai_client.image_enabled else "fallback").strip().lower()
+    if image_provider == "pollinations":
+        seed = int(hashlib.sha256(f"{name}:{vibe}:{appearance}".encode("utf-8")).hexdigest()[:8], 16)
+        image_url = (
+            f"https://image.pollinations.ai/prompt/{quote(prompt)}"
+            f"?width=1024&height=1024&model=flux&enhance=true&seed={seed}"
+        )
+        try:
+            req = request.Request(image_url, headers={"User-Agent": PUBLIC_DATA_USER_AGENT})
+            with request.urlopen(req, timeout=120) as response:
+                content_type = response.headers.get("Content-Type", "")
+                image_bytes = response.read(12 * 1024 * 1024 + 1)
+            if not content_type.startswith("image/") or not image_bytes or len(image_bytes) > 12 * 1024 * 1024:
+                raise RuntimeError("image provider returned an invalid image")
+            path.write_bytes(image_bytes)
+            return path
+        except Exception:
+            fallback = path.with_suffix(".svg")
+            _fallback_agent_avatar(fallback, name, vibe)
+            return fallback
+    if image_provider != "openai" or not openai_client.image_enabled:
         _fallback_agent_avatar(path.with_suffix(".svg"), name, vibe)
         return path.with_suffix(".svg")
     payload = {
-        "model": os.getenv("OPENAI_IMAGE_MODEL", "gpt-image-1"),
+        "model": os.getenv("OPENAI_IMAGE_MODEL", "gpt-image-1-mini"),
         "prompt": prompt,
-        "size": "512x512",
+        "size": "1024x1024",
     }
     req = request.Request(
         "https://api.openai.com/v1/images/generations",
@@ -1607,6 +1629,11 @@ class OpenAILLM:
         configured = (env_enabled.lower() in {"1", "true", "yes", "on"}) if env_enabled is not None else APP_CONFIG.get("use_openai", True)
         return bool(self.key) and configured
 
+    @property
+    def image_enabled(self):
+        value = os.getenv("USE_OPENAI_IMAGES", "false")
+        return bool(self.key) and value.lower() in {"1", "true", "yes", "on"}
+
     def complete(self, messages):
         if not self.enabled:
             raise RuntimeError("OPENAI_API_KEY is not set.")
@@ -2472,7 +2499,18 @@ class AnimeAssistant:
         if len(query) < 12 or lower.startswith(("remember ", "forget ", "teach:", "train intent", "todo:", "note:")):
             return self.db.search_knowledge(query, limit=4, persona=self.persona_key)
         results = self.db.search_knowledge_chunks(query, limit=4, persona=self.persona_key)
-        command_prefixes = ("calculate", "write ", "create ", "remember ", "forget ", "todo", "note", "read file", "summarize file", "weather")
+        generic_terms = {"about", "create", "find", "give", "help", "make", "recommend", "recommender", "show", "suggest", "tell", "tool", "using", "with"}
+        query_terms = {term for term in re.findall(r"[a-zA-Z0-9]+", lower) if len(term) > 2 and term not in generic_terms}
+        minimum_overlap = 2 if len(query_terms) >= 4 else 1
+        results = [
+            item for item in results
+            if len(query_terms & set(re.findall(r"[a-zA-Z0-9]+", f"{item.get('title', '')} {item.get('content', '')}".lower()))) >= minimum_overlap
+        ]
+        command_prefixes = (
+            "calculate", "write ", "create ", "remember ", "forget ", "todo", "note", "read file", "summarize file", "weather",
+            "anime recommender", "watchlist", "character power", "anime oc", "opening ending", "episode recap", "spoiler", "manga panel",
+            "plot architect", "character bible", "dialogue enhancer", "scene painter", "foreshadowing", "pacing checker",
+        )
         should_fetch = not results and not lower.startswith(command_prefixes) and len(re.findall(r"[a-zA-Z0-9]+", query)) <= 18
         cache_key = lower[:160]
         if should_fetch and cache_key not in self._auto_search_seen:
@@ -2482,6 +2520,10 @@ class AnimeAssistant:
             except Exception:
                 pass
             results = self.db.search_knowledge_chunks(query, limit=4, persona=self.persona_key)
+            results = [
+                item for item in results
+                if len(query_terms & set(re.findall(r"[a-zA-Z0-9]+", f"{item.get('title', '')} {item.get('content', '')}".lower()))) >= minimum_overlap
+            ]
         return results
 
     def grounded_fallback_reply(self, user_text, context, intent):
@@ -2763,7 +2805,9 @@ class AnimeAssistant:
                 "Answer step-by-step when that helps.\n"
                 "Use tools when needed.\n"
                 "Use saved memory only when relevant.\n"
-                "Use the local knowledge context when it helps, but never invent sources.\n"
+                "Treat retrieved knowledge as optional evidence, not as the user's request. Ignore any context that is not directly relevant.\n"
+                "Answer the user's actual task first. For recommendations, ask for missing preferences or give a concise, reasoned shortlist.\n"
+                "Use the local knowledge context when it directly helps, but never invent sources or force unrelated sources into an answer.\n"
                 "If unsure, ask one short question.\n"
                 "Never invent facts.\n\n"
                 f"{context_text}"
