@@ -2,25 +2,25 @@ const API = window.ANTIMONY_API || (window.location.protocol === "file:" ? "http
 const personas = {
   soren: {
     name: "Soren",
-    img: "assets/soren.png",
+    img: "/soren.png",
     vibe: "Calm strategist mode",
     quote: "\"Calm focus. Clean answers.\"",
   },
   renji: {
     name: "Renji",
-    img: "assets/renji.png",
+    img: "/renji.png",
     vibe: "Sharp rival-energy mode",
     quote: "\"Fast thinking. No wasted moves.\"",
   },
   kael: {
     name: "Kael",
-    img: "assets/kael.png",
+    img: "/kael.png",
     vibe: "Tactical sprint mode",
     quote: "\"Pick the target. Move clean.\"",
   },
   mira: {
     name: "Mira",
-    img: "assets/mira.png",
+    img: "/mira.png",
     vibe: "Bold recovery mode",
     quote: "\"Steady heart. Strong finish.\"",
   },
@@ -35,7 +35,8 @@ function avatarFallback(name = "AI") {
 function setAvatarImage(element, src, name) {
   if (!element) return;
   element.onerror = () => { element.onerror = null; element.src = avatarFallback(name); };
-  element.src = src || avatarFallback(name);
+  const normalized = String(src || "").replace(/^\/?assets\/(soren|renji|kael|mira)\.png$/i, "/$1.png");
+  element.src = normalized || avatarFallback(name);
 }
 
 document.addEventListener("error", event => {
@@ -367,7 +368,7 @@ async function loadPersonas() {
       personas[key] = {
         ...value,
         name: value.name || key,
-        img: value.image || personas[key]?.img || "assets/soren.png",
+        img: String(value.image || personas[key]?.img || "/soren.png").replace(/^\/?assets\/(soren|renji|kael|mira)\.png$/i, "/$1.png"),
         vibe: value.vibe || personas[key]?.vibe || "Custom assistant mode",
         quote: value.quote || personas[key]?.quote || `"${value.vibe || "Ready to help."}"`,
         custom: Boolean(value.custom),
